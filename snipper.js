@@ -9,7 +9,26 @@ var snipper = {
   isNativelySupported : function() {
     // the code is stolen from http://mathiasbynens.be/notes/html5-details-jquery
     // this will not work in `Chrome =10` but who cares since Chrome’s autoupdate 
-    return ('open' in document.createElement('details'));
+    // return ('open' in document.createElement('details'));
+    var isDetailsSupported = (function(doc) {
+      var el = doc.createElement('details'), fake, root, diff; 
+      if (!('open' in el)) return false;
+      root = doc.body || (function() {
+        var de = doc.documentElement;
+        fake = true;
+        return de.insertBefore(doc.createElement('body'), de.firstElementChild || de.firstChild);
+      }());
+      el.innerHTML = '<summary>a</summary>b';
+      el.style.display = 'block';
+      root.appendChild(el);
+      diff = el.offsetHeight;
+      el.open = true;
+      diff = diff != el.offsetHeight;
+      root.removeChild(el);
+      if (fake) root.parentNode.removeChild(root);
+      return diff;
+    }(document));
+    return isDetailsSupported;
   }(),
   /** The main entry point of the script. Supposed to be used as:
           snipper.init();                 // all the details on the page

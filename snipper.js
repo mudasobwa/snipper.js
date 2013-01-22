@@ -46,6 +46,10 @@ CanvasRenderingContext2D.prototype.roundRect = function (x, y, width, height, ra
 } 
 
 var snipper = {
+  magicHeight : 22,
+  magicSubHeight : 50,
+  snipperTitle : "Code listing #",
+  snipperId : 0,
   /** We should avoid applying this patch to those browsers already having details/summary support */
   isNativelySupported : function() {
     // the code is stolen from http://mathiasbynens.be/notes/html5-details-jquery
@@ -77,11 +81,13 @@ var snipper = {
           snipper.init("cutted", false);  // those having class “cutted”, initially opened
 
       Initializes all the details elements [optionally all having a specific class] on a page.
+      @param st the title for the snipper
       @param className the name of a class for a details’ to initialize (omit for all.)
       @param openAll boolean, denoting whether initial state of elements should be “opened”
         or “closed” (defaults to “opened”.) */
-  init : function(className, openAll) {
+  init : function(st, className, openAll) {
     if (this.isNativelySupported) return;
+    if (st) this.snipperTitle = st;
     this.initDefaultCss(className);
     var dets = document.getElementsByTagName("details");
     for (var i = 0; i < dets.length; i++ ) {
@@ -89,6 +95,7 @@ var snipper = {
         this.initDetail(dets[i], openAll);
       }
     }
+    this.initPres();
   },
   /** Initializes the default CSS for details/summaries. This is necessary since older browsers
         have no clue about whether details/summary are block elements.
@@ -102,10 +109,10 @@ var snipper = {
     style.type = "text/css";
     var detailsCssTag = "details" + (className ? "." + className : "");
     style.innerHTML =  detailsCssTag + ", " + detailsCssTag + " summary { display: block; } " +
-                       detailsCssTag + " { padding-left: 1em; margin-left: 1em; } " +
                        detailsCssTag + " summary { cursor: pointer; } " +
-                       detailsCssTag + " summary.opened:before { content: '▾ '; } " +
-                       detailsCssTag + " summary.closed:before { content: '▸ '; } ";
+                       detailsCssTag + " summary.opened:before  { content: '▾ '; } " +
+                       detailsCssTag + " summary.closed:before  { content: '▸ '; } " +
+                       detailsCssTag + " summary.snipper:before { content: none; } ";
     document.getElementsByTagName("head")[0].appendChild(style);
   },
   /** Initializes one details element.
@@ -132,7 +139,14 @@ var snipper = {
     var n = elem.parentNode.firstChild;
     for ( ; n; n = n.nextSibling ) {
       if ( n.nodeType == 1 && n != elem ) {
-        n.style.display = open ? "block" : "none";
+        if ( n.tagName.toLowerCase() === "pre") {
+          n.style.height = open ? "auto" : "" + Math.min(this.magicSubHeight, n.parentNode.offsetHeight - this.magicHeight) + "px";
+        } else if (n.className && n.className.toLowerCase() !== "snipper-fader") {
+          n.style.display = open ? "block" : "none";
+        } else {
+          n.style.display = open ? "none" : "block";
+        }
+        n.style.overflow = "hidden";
       }
     }
     elem.className = elem.className.replace(/opened|closed/g,"") + (open ? " opened" : " closed");
@@ -152,6 +166,11 @@ var snipper = {
     if (!e) var e = window.event;
     if (e.target) t = e.target; else if (e.srcElement) t = e.srcElement;
     if (t.nodeType == 3) /* defeat Safari bug */ t = t.parentNode;
+
+    if (t.tagName.toLowerCase() === "canvas") {
+      this.drawControlButton(t, t.getContext("2d"), /closed/.test(t.parentNode.className));
+      t = t.parentNode;
+    }
 
     this.toggleOpenClose(t);
   },
@@ -219,5 +238,61 @@ var snipper = {
     this.drawCaptionBG(canvas, c);
     this.drawCaptionText(canvas, c, text);
     this.drawControlButton(canvas, c, opened);
+  },
+
+  findCode : function(pre) {
+    for (var node = pre.firstChild; node; node = node.nextSibling) {
+      if (node.nodeName == 'CODE')
+        return node;
+      if (!(node.nodeType == 3 && node.nodeValue.match(/\s+/)))
+        break;
+    }
+  },
+
+  createFader : function(w) {
+    var fader = document.createElement("div");
+    fader.className = "snipper-fader";
+    fader.style.width = "" + w + "px";
+    fader.style.height = "" + this.magicSubHeight + "px";
+    fader.style.position = "absolute";
+    fader.style.margin.top = "10%";
+    fader.style.background = "url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmZmZmZiIgc3RvcC1vcGFjaXR5PSIwIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+)";
+    return fader;
+  }, 
+
+  initPres : function(className, openAll) {
+    var pres = document.getElementsByTagName("pre");
+    for (var i = 0; i < pres.length; i++ ) {
+      if ((!className || new RegExp(className, "i").test(dets[i].className)) && this.findCode(pres[i])) { 
+        this.initPre(pres[i], openAll);
+      }
+    }
+  },
+
+  initPre : function(elem, openIt) {
+    var wrapper = document.createElement("details"); 
+    elem.parentNode.insertBefore(wrapper, elem);
+    var sum = document.createElement("summary");
+    elem.style.margin = "0";
+    elem.style.padding = "0";
+    elem.style.border = "1px solid #ccc";
+    sum.style.height = "" + this.magicHeight + "px";
+    sum.className = "snipper";
+    var canvas = document.createElement("canvas");
+    if (canvas) {
+      canvas.height = this.magicHeight;
+      canvas.width = elem.offsetWidth;
+      canvas.class = "snipper";
+      canvas.style.cursor = "pointer";
+      canvas.onclick = function(e) { snipper.toggleDetail(e); };
+      sum.appendChild(canvas);
+      snipper.drawCaption(canvas, this.snipperTitle + ++this.snipperId);
+    }
+    wrapper.appendChild(sum);
+    wrapper.appendChild(elem);
+    
+    wrapper.insertBefore(snipper.createFader(elem.offsetWidth), elem);
+    
+    snipper.setOpenClose(sum, false);
   }
 }

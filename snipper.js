@@ -86,13 +86,14 @@ var snipper = {
       @param openAll boolean, denoting whether initial state of elements should be “opened”
         or “closed” (defaults to “opened”.) */
   init : function(st, className, openAll) {
-    if (this.isNativelySupported) return;
-    if (st) this.snipperTitle = st;
-    this.initDefaultCss(className);
-    var dets = document.getElementsByTagName("details");
-    for (var i = 0; i < dets.length; i++ ) {
-      if (!className || new RegExp(className, "i").test(dets[i].className)) { 
-        this.initDetail(dets[i], openAll);
+    if (!this.isNativelySupported) {
+      if (st) this.snipperTitle = st;
+      this.initDefaultCss(className);
+      var dets = document.getElementsByTagName("details");
+      for (var i = 0; i < dets.length; i++ ) {
+        if (!className || new RegExp(className, "i").test(dets[i].className)) { 
+          this.initDetail(dets[i], openAll);
+        }
       }
     }
     this.initPres();
@@ -135,7 +136,6 @@ var snipper = {
       @param elem the summary element to be opened/closed
       @param open opens an element when true, closes otherwise */
   setOpenClose : function(elem, open) {
-    if (this.isNativelySupported) return;
     var n = elem.parentNode.firstChild;
     for ( ; n; n = n.nextSibling ) {
       if ( n.nodeType == 1 && n != elem ) {
@@ -154,14 +154,12 @@ var snipper = {
   /** Toggles a summary’s siblings.
       @param elem the summary element to be toggled */
   toggleOpenClose : function(elem) {
-    if (this.isNativelySupported) return;
     if (elem && elem.tagName && elem.tagName.toLowerCase() === "summary") {
       this.setOpenClose(elem, !elem.className || /closed/.test(elem.className));
     }
   },
   /** Callback for onclick event on summary. Set’s in initDetail. */
   toggleDetail : function(e) {
-    if (this.isNativelySupported) return;
     var t;
     if (!e) var e = window.event;
     if (e.target) t = e.target; else if (e.srcElement) t = e.srcElement;
@@ -255,7 +253,6 @@ var snipper = {
     fader.style.width = "" + w + "px";
     fader.style.height = "" + this.magicSubHeight + "px";
     fader.style.position = "absolute";
-    fader.style.margin.top = "10%";
     fader.style.background = "url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmZmZmZiIgc3RvcC1vcGFjaXR5PSIwIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+)";
     return fader;
   }, 
@@ -280,12 +277,19 @@ var snipper = {
     sum.style.height = "" + this.magicHeight + "px";
     sum.className = "snipper";
     var canvas = document.createElement("canvas");
+    var toggler = this;
     if (canvas) {
+      if (this.isNativelySupported) {
+        sum.style.color = "transparent";
+        canvas.style.position = "relative";
+        canvas.style.display = "block";
+        canvas.style.marginTop = "-" + this.magicHeight + "px";
+      }
       canvas.height = this.magicHeight;
       canvas.width = elem.offsetWidth;
       canvas.class = "snipper";
       canvas.style.cursor = "pointer";
-      canvas.onclick = function(e) { snipper.toggleDetail(e); };
+      canvas.onclick = function(e) { toggler.toggleDetail(e); };
       sum.appendChild(canvas);
       snipper.drawCaption(canvas, this.snipperTitle + ++this.snipperId);
     }

@@ -140,7 +140,7 @@ var snipper = {
     for ( ; n; n = n.nextSibling ) {
       if ( n.nodeType == 1 && n != elem ) {
         if ( n.tagName.toLowerCase() === "pre") {
-          n.style.height = open ? "auto" : "" + Math.min(this.magicSubHeight, n.parentNode.offsetHeight - this.magicHeight) + "px";
+          n.style.height = open || (this.magicSubHeight >= n.parentNode.offsetHeight - this.magicHeight) ? "auto" : "" + this.magicSubHeight + "px";
         } else if (n.className && n.className.toLowerCase() !== "snipper-fader") {
           n.style.display = open ? "block" : "none";
         } else {
@@ -271,10 +271,11 @@ var snipper = {
 
   initPre : function(elem, openIt) {
     var wrapper = document.createElement("details"); 
+    wrapper.style.minHeight = "" + (this.magicHeight + this.magicSubHeight) + "px";
     elem.parentNode.insertBefore(wrapper, elem);
     var sum = document.createElement("summary");
-    elem.style.margin = "0";
-    elem.style.padding = "0";
+    elem.style.margin = "0 0 1em 0";
+    elem.style.padding = "0 1em";
     elem.style.border = "1px solid #ccc";
     sum.style.height = "" + this.magicHeight + "px";
     sum.className = "snipper";

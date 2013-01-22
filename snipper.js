@@ -1,8 +1,49 @@
-/* 
-   Snipper is a small javascript to add the html5 details/summary functionality to old browsers 
-   Dual MIT+BSD license 
-   http://mudasobwa.github.com
+/* Snipper is a small javascript to add the html5 details/summary functionality to alld browsers :: MIT+BSD license :: http://mudasobwa.github.com */
+
+/** 
+* Draws a rounded rectangle using the current state of the canvas.  
+* If you omit the last three params, it will draw a rectangle  
+* outline with a 5 pixel border radius  
+*
+* author: http://stackoverflow.com/a/7592676
+*
+* @param {Number} x The top left x coordinate 
+* @param {Number} y The top left y coordinate  
+* @param {Number} width The width of the rectangle  
+* @param {Number} height The height of the rectangle 
+* @param {Object} radius All corner radii. Defaults to 0,0,0,0; 
+* @param {Boolean} fill Whether to fill the rectangle. Defaults to false. 
+* @param {Boolean} stroke Whether to stroke the rectangle. Defaults to true. 
 */
+CanvasRenderingContext2D.prototype.roundRect = function (x, y, width, height, radius, fill, stroke) {
+  var cornerRadius = { upperLeft: 0, upperRight: 0, lowerLeft: 0, lowerRight: 0 };
+  if (typeof stroke == "undefined") {
+    stroke = true;
+  }
+  if (typeof radius === "object") {
+    for (var side in radius) {
+      cornerRadius[side] = radius[side];
+    }
+  }
+
+  this.beginPath();
+  this.moveTo(x + cornerRadius.upperLeft, y);
+  this.lineTo(x + width - cornerRadius.upperRight, y);
+  this.quadraticCurveTo(x + width, y, x + width, y + cornerRadius.upperRight);
+  this.lineTo(x + width, y + height - cornerRadius.lowerRight);
+  this.quadraticCurveTo(x + width, y + height, x + width - cornerRadius.lowerRight, y + height);
+  this.lineTo(x + cornerRadius.lowerLeft, y + height);
+  this.quadraticCurveTo(x, y + height, x, y + height - cornerRadius.lowerLeft);
+  this.lineTo(x, y + cornerRadius.upperLeft);
+  this.quadraticCurveTo(x, y, x + cornerRadius.upperLeft, y);
+  this.closePath();
+  if (stroke) {
+    this.stroke();
+  }
+  if (fill) {
+    this.fill();
+  }
+} 
 
 var snipper = {
   /** We should avoid applying this patch to those browsers already having details/summary support */
@@ -105,7 +146,7 @@ var snipper = {
     }
   },
   /** Callback for onclick event on summary. Set’s in initDetail. */
-  toggleDetail: function(e) {
+  toggleDetail : function(e) {
     if (this.isNativelySupported) return;
     var t;
     if (!e) var e = window.event;
@@ -113,5 +154,70 @@ var snipper = {
     if (t.nodeType == 3) /* defeat Safari bug */ t = t.parentNode;
 
     this.toggleOpenClose(t);
+  },
+
+  /* ========================================================================== */
+  /* ====         Dealing with canvas to draw proper captions              ==== */
+  /* ========================================================================== */
+ 
+  prepareShadow : function (ctx, x, y, b, cl) {
+    x |= 0; y |= 0; b |= 0;
+    ctx.shadowOffsetX = x;
+    ctx.shadowOffsetY = y;
+    ctx.shadowBlur = b;
+    ctx.shadowColor = cl ? cl : "#FFF";
+  },
+
+  drawCaptionBG : function(c, ctx, colorFrom, colorTo) {
+    var r = c.height / 2;
+    var cf = colorFrom ? colorFrom : "#666";
+    var ct = colorTo ? colorTo : "#CCC";
+    var grd = ctx.createLinearGradient(0, 0, 0, c.height);
+    grd.addColorStop(0, cf);   
+    grd.addColorStop(1, ct);
+    ctx.fillStyle = grd;
+    ctx.strokeStyle = cf;
+    ctx.roundRect(0, 0, c.width, c.height, {upperLeft:r,upperRight:r}, true, true);    
+  },
+
+  drawCaptionText : function(c, ctx, txt, sz, cl) {
+    sz |= c.height * 0.54;
+    ctx.font = "bold " + sz + "px Ubuntu";
+    ctx.fillStyle = cl ? cl : "#FFF";
+    ctx.fillText(txt, c.height * 2, c.height / 2 + sz * 0.3);
+  },
+
+  drawControlButton : function (c, ctx, opened, cl, clTxt) {
+    shadowSz = 4;
+    y = c.height * 0.5;
+    r = c.height * 0.3; 
+    x = c.height * 0.75;
+
+    _cl = cl ? cl : "#999";
+
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 2 * Math.PI, false);
+    
+    var grd = ctx.createRadialGradient(x - r/2, y - r/2, 0, x, y, r);
+    grd.addColorStop(0, "#FFF");
+    grd.addColorStop(1, _cl);
+    ctx.fillStyle = grd;
+
+    this.prepareShadow(ctx, -1, -1, shadowSz, "#999");
+
+    ctx.fill();
+    ctx.strokeStyle = _cl;
+    ctx.stroke();
+
+    ctx.font = "normal " + (1 + 2 * r) + "px Ubuntu";
+    ctx.fillStyle = clTxt ? clTxt : "#666";
+    ctx.fillText(opened ? "▾" : "▸", x - r/2 + (opened ? 0 : 1), y + r/2);
+  },
+
+  drawCaption : function(canvas, text, opened) {
+    var c = canvas.getContext("2d");
+    this.drawCaptionBG(canvas, c);
+    this.drawCaptionText(canvas, c, text);
+    this.drawControlButton(canvas, c, opened);
   }
 }
